@@ -106,7 +106,8 @@ class AdvGame:
         """Plays the adventure game stored in this object."""
         current = "START"
         printed = True
-        while current != "EXIT":
+        forced = False
+        while current != "Victory":
             room = self._rooms[current]
             forced = False
             itemnoti2 = False
@@ -126,14 +127,16 @@ class AdvGame:
                 newitemdesc2 = ""
             if printed == True:
                 if room._set_visited == False:                 #Handles short vs long descriptions based on if visited 
-                    for line in room.get_long_description():
-                        print(line)
-                    if newitemdesc2 != "":    
-                        for item in roomitem:
-                            indivdesc = roomitem[item].get_item_description()
-                            print("There is", indivdesc, "here")
+                    long_desc = room.get_long_description()
+                    if long_desc != {}:  
+                        for line in long_desc:
+                            print(line)
+                        if newitemdesc2 != "":    
+                            for item in roomitem:
+                                indivdesc = roomitem[item].get_item_description()
+                                print("There is", indivdesc, "here")                                                
                     room._set_visited = True
-                else:
+                elif response != "FORCED":
                     desc = room.get_short_description()
                     if desc != "-":
                         print(desc)
@@ -148,6 +151,7 @@ class AdvGame:
             else:
                 printed = True
 
+            
             for answer in answers:
                 if not forced:  #Handles FORCED passages
                     if answer[0] == "FORCED" and answer[2] is not None:
@@ -155,27 +159,30 @@ class AdvGame:
                         if itemforced in self._inventory:
                             current = answer[1]
                             room = self._rooms[current]
-                            for line in room.get_long_description():
-                                print(line)
                             forced = True
-                            printed = True
                         else:
                             itemnoti2 = True
-                    elif answer[0] == "FORCED" and answer[2] is None:
+                    elif answer[0] == "FORCED":
                         current = answer[1]
                         if current != "EXIT":
                             room = self._rooms[current]
                         else:
                             quit()
-                        for line in room.get_long_description():
-                            print(line)
                         forced = True
-                        printed = True
+            if forced == True and room.get_short_description() != "-":
+                for line in (room.get_long_description()):
+                    print(line)
+                iteminroomcurrent = room.lit_item_in_room()
+                for item in iteminroomcurrent:
+                    itemdescription = self._items[item].get_item_description()
+                    print("There is", itemdescription, "here.")
+                room._set_visited = True
             if itemnoti2:
-                print("You do not have the necessary item to enter this room.")
                 continue  
 
-            response = input("> ").strip().upper()       #Handles synonyms
+            if forced != True:
+                response = input("> ").strip().upper()       #Handles synonyms
+            else: response = "FORCED"
             words = response.split()  
             new_response = []
             for word in words:
@@ -209,9 +216,6 @@ class AdvGame:
                 print("You do not have the necessary item to enter this room.")
 
 
-            totalitemsinroom = len(roomitem)
-
-
             if response == "HELP":      #Checks help command
                 for line in HELP_TEXT:
                     print(line)
@@ -225,10 +229,10 @@ class AdvGame:
             elif response == "LOOK":       #Checks look command
                 for line in room.get_long_description():
                     print(line)
-                if newitemdesc2 != "":
-                    for item in roomitem:
-                        indivdesc = roomitem[item].get_item_description()
-                        print("There is", indivdesc, "here")
+                itemsinroom = room.lit_item_in_room()
+                for item in itemsinroom:
+                    indivdesc = self._items[item].get_item_description()
+                    print("There is", indivdesc, "here")
                 printed = False
 
 
@@ -237,9 +241,10 @@ class AdvGame:
                 printed = False
 
 
-            elif totalitemsinroom > 0 and response[0:4] == "TAKE":     #Checks take command
+            elif response[0:4] == "TAKE":     #Checks take command
                 taken = False
                 removeditem = None
+                roomitem = room.lit_item_in_room()
                 if taken == False:
                     for item in roomitem:
                         itemname = roomitem[item].get_item_name()
@@ -289,10 +294,14 @@ class AdvGame:
             elif next_room is not None:
                 current = next_room
 
-            else:
+            elif forced != True:
                 print("I don't understand that response.")
                 printed = False
+                forced = False
 
+
+        for line in WIN_TEXT:
+            print(line)
         quit()
             
             
@@ -317,4 +326,9 @@ HELP_TEXT = [
     "can TAKE or DROP.  To see what items you're carrying, say INVENTORY.",
     "To reprint the detailed description of where you are, say LOOK.  If you",
     "want to end your adventure, say QUIT."
+]
+
+WIN_TEXT = [
+    "You have collected all the treasures and are admitted to",
+    "the Adventurer's Hall of Fame.  Congratulations!"
 ]

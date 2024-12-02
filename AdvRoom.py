@@ -89,12 +89,12 @@ class AdvRoom:
         """Returns item in the room"""
         if self._itemsdict != None:
             for item in self._itemsdict:
-                return self._itemsdict.get_item_name()
+                return item
         else: return None
 
     def lit_item_in_room(self):
         if self._itemsdict != None:
-                return self._itemsdict
+            return self._itemsdict
         else: return None
 
     
