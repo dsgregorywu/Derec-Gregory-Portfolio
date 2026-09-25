@@ -1,0 +1,26 @@
+"I'm doing a project for an internship application and would love to brainstorm how to flush out my plan.
+
+
+My plan:
+
+1. Run linear regressions on different variables to find their weight towards the outcome of a shot
+
+2. Weigh each variable based on the results of the linear regressions
+
+3. Predict each shot then compare it to the outcome, get an accuracy %
+
+4. Repeat with different weights to find the most accurate model "
+
+
+"I would like to add a visual marker for the hoop and for the 3pt line in my plot. What is the most effective way
+of doing this?"
+
+"I'm a bit confused on the logistics of whether or not to include things such as half-court heaves that may throw 
+off my model. Additionally, how do I factor in the defensive_efficiency variable if the shot is not contested?"
+
+"An issue I'm running into is that the model has a hard time accounting for shots behind the backboard. How can
+I go about circumnavigating this?"
+
+"What other ways can I improve my model? I've noticed it doesn't like to reward shots that are far away from the basket,
+despite in the orginal dataset having many of these shots go in. Help brainstorm a solution to this, as well as
+any other ways you think I can improve the accuracy and quality of my model."

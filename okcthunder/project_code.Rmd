@@ -1,0 +1,334 @@
+---
+title: "project_code.Rmd"
+output: html_document
+date: "2026-09-19"
+# NAME: Derec Gregory | NUMBER: 2292
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(scales)
+library(readr)
+library(lightgbm)
+library(stringr)
+library(randomForest)
+library(caret)
+```
+
+
+```{r}
+#Importing data 
+Sys.setenv('R_MAX_VSIZE' = 32000000000)
+training <- read.csv("training.csv.gz")
+testing <- read.csv("testing.csv.gz")
+submission <- read.csv("submission.csv")
+```
+
+
+```{r}
+m <- 10
+league_avg <- mean(training$outcome, na.rm = TRUE)
+
+set.seed(42)
+folds <- createFolds(training$outcome, k = 5, list = TRUE)
+
+training$shooter_efficiency <- NA_real_
+training$defensive_efficiency <- NA_real_
+
+for (fold_idx in seq_along(folds)) {
+  val_indices <- folds[[fold_idx]]
+  tr_data <- training[-val_indices, ]
+  
+  shooter_stats <- tr_data %>%
+    group_by(shooter_id) %>%
+    summarize(
+      total_shots = n(),
+      total_makes = sum(outcome),
+      .groups = "drop"
+    )
+  
+  defender_stats <- tr_data %>%
+    filter(contested == TRUE) %>%
+    group_by(closestdef_id) %>%
+    summarize(
+      total_contests = n(),
+      makes_allowed = sum(outcome),
+      .groups = "drop"
+    )
+  
+  fold_df <- training[val_indices, ]
+  
+  fold_df <- fold_df %>%
+    left_join(shooter_stats, by = "shooter_id") %>%
+    left_join(defender_stats, by = "closestdef_id") %>%
+    mutate(
+      shooter_eff = (coalesce(total_makes, 0) + m * league_avg) / (coalesce(total_shots, 0) + m),
+      def_eff = case_when(
+        contested == FALSE ~ league_avg,
+        TRUE ~ (coalesce(makes_allowed, 0) + m * league_avg) / (coalesce(total_contests, 0) + m)
+      )
+    )
+  
+  training$shooter_efficiency[val_indices]   <- fold_df$shooter_eff
+  training$defensive_efficiency[val_indices] <- fold_df$def_eff
+}
+```
+
+```{r}
+#Prep Variables
+
+prepare_features <- function(df) {
+  shoot_eff_vec <- if ("shooter_efficiency" %in% colnames(df)) {
+    df$shooter_efficiency
+  } else {
+    rep(league_avg, nrow(df))
+  }
+
+  def_eff_vec <- if ("defensive_efficiency" %in% colnames(df)) {
+    df$defensive_efficiency
+  } else if ("defender_efficiency" %in% colnames(df)) {
+    df$defender_efficiency
+  } else {
+    rep(league_avg, nrow(df))
+  }
+
+  df %>%
+    mutate(
+      # Offense Variables
+      locationx           = as.numeric(locationx),
+      locationy           = as.numeric(locationy),
+      distance            = as.numeric(distance),
+      dribblesbefore      = as.numeric(dribblesbefore),
+      shotclock           = as.numeric(shotclock),
+      shooterspeed        = as.numeric(shooterspeed),
+      three               = as.numeric(three),
+      shottype_num        = as.numeric(factor(shottype)),
+      gamestate_num       = as.numeric(factor(gamestate)),
+      shooter_efficiency  = coalesce(as.numeric(shoot_eff_vec), league_avg),
+      dist_to_rim         = sqrt((locationx - (-41.75))^2 + (locationy - 0)^2),
+      shot_angle          = abs(atan2(locationy, locationx - (-41.75))),
+      is_behind_backboard = as.numeric(locationx < -43.75),
+      backboard_depth     = pmax(0, -43.75 - locationx),
+      
+      # Defense Variables
+      num_contesters       = as.numeric(num_contesters),
+      contested            = as.numeric(contested),
+      closestdefdist       = as.numeric(closestdefdist),
+      defensive_efficiency = coalesce(as.numeric(def_eff_vec), league_avg),
+      distcont1_clean      = ifelse(is.na(distcont1), 99, as.numeric(distcont1)),
+      def_closing_speed    = sapply(closestdefapproach, function(arr) {
+        if (is.null(arr) || length(arr) < 4) return(0)
+        return(as.numeric(arr[1]) - as.numeric(arr[4])) 
+      })
+    )
+}
+
+offense_vars <- c("dribblesbefore", "shotclock", "shooterspeed", "three", 
+                  "shottype_num", "gamestate_num", "shooter_efficiency", 
+                  "dist_to_rim", "shot_angle", "backboard_depth", "is_behind_backboard")
+
+defense_vars <- c("num_contesters", "contested", "closestdefdist", 
+                  "distcont1_clean", "def_closing_speed", "defensive_efficiency")
+
+combined_vars <- c(offense_vars, defense_vars)
+```
+
+```{r}
+# 5. Model Validation Split
+future_training <- training
+future_testing  <- testing
+
+future_training_prep <- prepare_features(future_training %>% filter(!is.na(outcome)))
+
+set.seed(42)
+split_idx <- 1:212859
+
+training_training_tree <- future_training_prep[split_idx, ]
+training_testing_tree  <- future_training_prep[(max(split_idx) + 1):nrow(future_training_prep), ]
+
+# Median Imputation for missing values across predictor variables
+for (var in combined_vars) {
+  if (any(is.na(training_training_tree[[var]]))) {
+    med_val <- median(training_training_tree[[var]], na.rm = TRUE)
+    training_training_tree[[var]][is.na(training_training_tree[[var]])] <- med_val
+    training_testing_tree[[var]][is.na(training_testing_tree[[var]])]   <- med_val
+  }
+}
+
+training_training_tree$outcome_factor <- as.factor(training_training_tree$outcome)
+training_testing_tree$outcome_factor  <- as.factor(training_testing_tree$outcome)
+
+training_training_tree$shot_weight <- case_when(
+  training_training_tree$dist_to_rim <= 4  ~ 0.5,
+  training_training_tree$dist_to_rim <= 15 ~ 1.0,
+  TRUE                                     ~ 1.5
+)
+```
+
+```{r}
+# 6. Light GBM Mode `
+X_train_comb <- as.matrix(training_training_tree[, combined_vars])
+y_train      <- training_training_tree$outcome
+
+X_test_comb  <- as.matrix(training_testing_tree[, combined_vars])
+y_test       <- training_testing_tree$outcome
+
+dtrain_comb <- lgb.Dataset(data = X_train_comb, label = y_train)
+
+lgb_params <- list(
+  objective = "binary",
+  metric = "binary_logloss",
+  boosting_type = "gbdt",
+  learning_rate = 0.03,
+  num_leaves = 15,            
+  max_depth = 5,
+  min_data_in_leaf = 100,    
+  feature_fraction = 0.5,     
+  bagging_fraction = 0.8,
+  bagging_freq = 1
+)
+
+combined_lgb_model <- lgb.train(
+  params = lgb_params,
+  data = dtrain_comb,
+  nrounds = 200
+)
+
+lgb_preds <- predict(combined_lgb_model, X_test_comb)
+```
+
+```{r}
+# Random forest model
+forest_formula <- as.formula(paste("outcome_factor ~", paste(combined_vars, collapse = " + ")))
+
+random_forest_model <- randomForest(
+  formula      = forest_formula,
+  data         = training_training_tree,
+  ntree        = 100,
+  importance   = TRUE,
+  case.weights = training_training_tree$shot_weight
+)
+
+raw_rf_probs <- predict(random_forest_model, newdata = training_testing_tree, type = "prob")
+
+if ("1" %in% colnames(raw_rf_probs)) {
+  rf_preds <- raw_rf_probs[, "1"]
+} else if ("TRUE" %in% colnames(raw_rf_probs)) {
+  rf_preds <- raw_rf_probs[, "TRUE"]
+} else {
+  rf_preds <- raw_rf_probs[, 2]
+}
+```
+
+```{r}
+#Finding optimal blending weight
+calc_log_loss <- function(actual, pred, eps = 1e-15) {
+  pred <- pmin(pmax(pred, eps), 1 - eps)
+  -mean(actual * log(pred) + (1 - actual) * log(1 - pred))
+}
+
+eps <- 1e-15
+lgb_preds_clean <- pmin(pmax(lgb_preds, eps), 1 - eps)
+rf_preds_clean  <- pmin(pmax(rf_preds, eps), 1 - eps)
+
+lgb_loss <- calc_log_loss(y_test, lgb_preds_clean)
+rf_loss  <- calc_log_loss(y_test, rf_preds_clean)
+
+cat(sprintf("Standalone LightGBM Log Loss:      %.5f\n", lgb_loss))
+cat(sprintf("Standalone Random Forest Log Loss:  %.5f\n\n", rf_loss))
+
+best_weight <- 0.0
+best_blend_loss <- lgb_loss
+
+for (w_rf in seq(0, 0.50, by = 0.01)) {
+  w_lgb <- 1 - w_rf
+  blended_preds <- (w_lgb * lgb_preds_clean) + (w_rf * rf_preds_clean)
+  current_loss <- calc_log_loss(y_test, blended_preds)
+  
+  if (current_loss < best_blend_loss) {
+    best_blend_loss <- current_loss
+    best_weight <- w_rf
+  }
+}
+
+cat(sprintf("Best Optimization Results:\n"))
+cat(sprintf("LightGBM Weight:      %.2f%%\n", (1 - best_weight) * 100))
+cat(sprintf("Random Forest Weight: %.2f%%\n", best_weight * 100))
+cat(sprintf("New Blended Log Loss: %.5f\n", best_blend_loss))
+```
+
+```{r}
+
+full_train_prep <- prepare_features(future_training %>% filter(!is.na(outcome)))
+test_prep       <- prepare_features(testing)
+
+for (var in combined_vars) {
+  if (any(is.na(full_train_prep[[var]]))) {
+    med_val <- median(full_train_prep[[var]], na.rm = TRUE)
+    full_train_prep[[var]][is.na(full_train_prep[[var]])] <- med_val
+    
+    if (var %in% colnames(test_prep)) {
+      test_prep[[var]][is.na(test_prep[[var]])] <- med_val
+    }
+  }
+}
+
+full_train_prep$outcome_factor <- as.factor(full_train_prep$outcome)
+full_train_prep$shot_weight <- case_when(
+  full_train_prep$dist_to_rim <= 4  ~ 0.5,
+  full_train_prep$dist_to_rim <= 15 ~ 1.0,
+  TRUE                              ~ 1.5
+)
+
+X_full_train <- as.matrix(full_train_prep[, combined_vars])
+y_full_train <- full_train_prep$outcome
+X_final_test <- as.matrix(test_prep[, combined_vars])
+
+dtrain_full <- lgb.Dataset(data = X_full_train, label = y_full_train)
+
+final_lgb <- lgb.train(
+  params = lgb_params,
+  data = dtrain_full,
+  nrounds = 200
+)
+final_lgb_probs <- predict(final_lgb, X_final_test)
+
+final_rf <- randomForest(
+  formula      = forest_formula,
+  data         = full_train_prep,
+  ntree        = 100,
+  importance   = TRUE,
+  case.weights = full_train_prep$shot_weight
+)
+
+final_rf_raw <- predict(final_rf, newdata = test_prep, type = "prob")
+if ("1" %in% colnames(final_rf_raw)) {
+  final_rf_probs <- final_rf_raw[, "1"]
+} else if ("TRUE" %in% colnames(final_rf_raw)) {
+  final_rf_probs <- final_rf_raw[, "TRUE"]
+} else {
+  final_rf_probs <- final_rf_raw[, 2]
+}
+
+#Blending random forest and lightgbm models
+w_rf  <- best_weight
+w_lgb <- 1 - best_weight
+
+final_blend <- (w_lgb * final_lgb_probs) + (w_rf * final_rf_probs)
+final_blend <- pmin(pmax(final_blend, eps), 1 - eps)
+
+submission_df <- data.frame(
+  id = if ("id" %in% colnames(testing)) testing$id else seq_len(nrow(testing)),
+  outcome = final_blend
+)
+
+write.csv(submission_df, "submission.csv", row.names = FALSE)
+
+cat("==========================================\n")
+cat(sprintf("Successfully generated submissions.csv with %d rows!\n", nrow(submission_df)))
+cat("==========================================\n")
+```
+
