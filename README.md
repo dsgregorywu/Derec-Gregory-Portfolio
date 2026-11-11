@@ -39,7 +39,7 @@ Unity / C# games
 
 ** Finished Scores - MuseScore
 Many of my favorite arrangements I've made!
-- Find them here: [`Finished Scores`](Finished%Scores/)
+- Find them here: [`Finished Scores`](Finished%20Scores/)
 
 
 ### More projects in this repo
