@@ -45,4 +45,4 @@ A small original sorting idea, single-file.
 - [Sprite-Flight](https://github.com/dsgregorywu/Sprite-Flight)
 
 ## In progress — not yet on GitHub
-- **CS-161 / DATA-500 Final Project** (Fall 2026) — Milestone 5 + Shiny app, with Emma Matthews. My most relevant current analytics work; I will add it here when it is ready.
+- **CS-161 / DATA-500 Final Project** (Fall 2026) My most relevant current analytics work; I will add it here when it is ready.
