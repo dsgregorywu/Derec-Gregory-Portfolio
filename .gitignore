@@ -1,0 +1,7 @@
+# macOS
+.DS_Store
+# Python
+__pycache__/
+*.py[cod]
+# Archives that duplicate a standalone repo
+ChordPredictor.zip

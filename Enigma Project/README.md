@@ -1,4 +1,15 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/bG1iAvJD)
-# Enigma Project
+# Enigma Machine
 
-Enclosed herein are the starting materials for the Enigma Machine project. Refer to the large guide posted to walk you through each of the milestones.
+A model–view–controller Enigma machine, in Python with a C implementation alongside.
+
+## Files
+- `EnigmaModel.py` — the machine: rotors, plugboard, reflector
+- `EnigmaView.py` — the interface
+- `EnigmaConstants.py` — constants
+- `enigma.c` — C implementation
+- `images/EnigmaTopView.png` — top view of the machine
+
+## How to run
+```bash
+python3 EnigmaView.py
+```
