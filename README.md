@@ -37,8 +37,10 @@ Unity / C# games
 - [CS276-Ice-Cream-Game](https://github.com/dsgregorywu/CS276-Ice-Cream-Game)
 - [Sprite-Flight](https://github.com/dsgregorywu/Sprite-Flight)
 
-Finished Scores - MuseScore
-- Many of my favorite arrangements I've made!
+** Finished Scores - MuseScore
+Many of my favorite arrangements I've made!
+- Find them here: [`Finished Scores`](Finished%Scores/)
+
 
 ### More projects in this repo
 - [`Breakout/`](Breakout/) — Breakout game in Python
