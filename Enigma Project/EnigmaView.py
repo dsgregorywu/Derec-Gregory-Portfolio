@@ -185,14 +185,9 @@ class EnigmaView:
                 letter = self._enigma.get_rotor_letter(index)
                 self._canvas.itemconfigure(label, text=letter)
 
-            
-
         update_keys()
         update_lamps()
         update_rotors()
-
-
-
 
         
 # Constants

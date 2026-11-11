@@ -1,5 +1,5 @@
 # File: Adventure.py
-# Name: your name
+# Name: Derec
 # Partner: partners name if applicable
 # GenAI transcript (if used):
 # Description of any extensions:
@@ -19,7 +19,7 @@ from AdvGame import AdvGame
 
 # Constants
 
-DATA_FILE_PREFIX = "Tiny"
+DATA_FILE_PREFIX = "Crowther"
 
 # Main program
 

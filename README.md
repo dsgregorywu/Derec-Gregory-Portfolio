@@ -24,17 +24,15 @@ Route-finding over Oregon cities with A*, Dijkstra, and Greedy Best-First Search
 
 ### 4. Enigma Machine — Python + C
 A model–view–controller Enigma machine, in Python with a C implementation alongside.
-- Code in this repo: [`Enigma Project/`](Enigma%20Project/), `EnigmaModel.py`, `EnigmaView.py`, `EnigmaConstants.py`, `enigma.c`
+- Code in this repo: [`Enigma Project/`](Enigma%20Project/)
 
 ### 5. Data presentations
 Analytics storytelling, in this repo:
-- `Mitigating Postpartum Depression.pptx`
-- `Industry Demands In Commercial Real Estate.pptx`
-- `Derec and Ruby - DATA151 Presentation.pdf`
+- [`Presentations/`](Presentations/) — `Mitigating Postpartum Depression.pptx`, `Industry Demands In Commercial Real Estate.pptx`, `Derec and Ruby - DATA151 Presentation.pdf`, `DS152Week13.pdf`
 
 ### 6. Adventure Game — Python
 Object-oriented text adventure game.
-- Code in this repo: `AdvGame.py`, `AdvItem.py`, `AdvRoom.py`, `Adventure.py`, [`Adventure Project/`](Adventure%20Project/)
+- Code in this repo: [`Adventure Project/`](Adventure%20Project/)
 
 ### 7. Percentile Sort — Python
 A small original sorting idea, single-file.
@@ -43,6 +41,12 @@ A small original sorting idea, single-file.
 ### 8. Unity / C# games
 - [CS276-Ice-Cream-Game](https://github.com/dsgregorywu/CS276-Ice-Cream-Game)
 - [Sprite-Flight](https://github.com/dsgregorywu/Sprite-Flight)
+
+### More projects in this repo
+- [`Breakout/`](Breakout/) — Breakout game in Python
+- [`Wordle/`](Wordle/) — Wordle game in Python
+- [`ImageShop/`](ImageShop/) — image editing app in Python
+- [`Analysis-of-Algorithms/`](Analysis-of-Algorithms/) — timing selection, merge, and insertion sort
 
 ## In progress — not yet on GitHub
 - **CS-161 / DATA-500 Final Project** (Fall 2026) My most relevant current analytics work; I will add it here when it is ready.
