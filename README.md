@@ -34,11 +34,7 @@ Analytics storytelling, in this repo:
 Object-oriented text adventure game.
 - Code in this repo: [`Adventure Project/`](Adventure%20Project/)
 
-### 7. Percentile Sort — Python
-A small original sorting idea, single-file.
-- Repo: [dsgregorywu/percentilesort](https://github.com/dsgregorywu/percentilesort)
-
-### 8. Unity / C# games
+### 7. Unity / C# games
 - [CS276-Ice-Cream-Game](https://github.com/dsgregorywu/CS276-Ice-Cream-Game)
 - [Sprite-Flight](https://github.com/dsgregorywu/Sprite-Flight)
 
